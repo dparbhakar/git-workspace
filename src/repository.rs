@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+extern crate dunce;
 
 // Eq, Ord and friends are needed to order the list of repositories
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, Ord, PartialEq, PartialOrd)]
@@ -163,12 +164,16 @@ impl Repository {
     pub fn clone(&self, root: &Path, progress_bar: &ProgressBar) -> anyhow::Result<()> {
         let mut command = Command::new("git");
 
+        let new_name = self.name();
+        let compatible_root_name = dunce::canonicalize(&root).unwrap();
+        let compatible_joined_name = compatible_root_name.join(&new_name);
+
         let child = command
             .arg("clone")
             .arg("--recurse-submodules")
             .arg("--progress")
             .arg(&self.url)
-            .arg(root.join(self.name()));
+            .arg(compatible_joined_name);
 
         self.run_with_progress(child, progress_bar)
             .with_context(|| {
